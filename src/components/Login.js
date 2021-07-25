@@ -1,20 +1,13 @@
 import React from "react";
 import { GoogleOutlined, FacebookOutlined } from "@ant-design/icons";
-import "firebase/app";
-
-// import auth stuff from firebase
-import { auth } from "../firebase";
 import firebase from "firebase/app";
+import { auth } from "../firebase";
 
-const Login = () => {
+export default function Login() {
   return (
     <div id="login-page">
-      {/* main center card */}
       <div id="login-card">
-        {/* header */}
-        <h2>Welcome to WeChat!</h2>
-
-        {/* login option 1: google */}
+        <h2>Welcome to Unichat!</h2>
         <div
           className="login-button google"
           onClick={() =>
@@ -23,10 +16,10 @@ const Login = () => {
         >
           <GoogleOutlined /> Sign In with Google
         </div>
+
         <br />
         <br />
 
-        {/* login option 2: facebook */}
         <div
           className="login-button facebook"
           onClick={() =>
@@ -38,6 +31,4 @@ const Login = () => {
       </div>
     </div>
   );
-};
-
-export default Login;
+}

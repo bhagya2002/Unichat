@@ -1,65 +1,88 @@
-import React, { useRef, useEffect, useState } from "react";
+import React, { useRef, useState, useEffect } from "react";
+import axios from "axios";
 import { useHistory } from "react-router-dom";
 import { ChatEngine } from "react-chat-engine";
+import { useAuth } from "../contexts/AuthContext";
 import { auth } from "../firebase";
-import { useAuth } from "../context/AuthContext";
-import axios from "axios";
 
-const Chats = () => {
-  const history = useHistory();
-  const { user } = useAuth();
+export default function Chats() {
+  const didMountRef = useRef(false);
   const [loading, setLoading] = useState(true);
+  const { user } = useAuth();
+  const history = useHistory();
 
-  console.log(user);
-
-  const handlelogout = async () => {
+  async function handleLogout() {
     await auth.signOut();
-
     history.push("/");
-  };
+  }
+
+  async function getFile(url) {
+    let response = await fetch(url);
+    let data = await response.blob();
+    return new File([data], "userProfilePicture.jpg", { type: "image/jpeg" });
+  }
 
   useEffect(() => {
-    if (!user) {
-      history.push("/");
+    if (!didMountRef.current) {
+      didMountRef.current = true;
 
-      return;
+      if (!user || user === null) {
+        history.push("/");
+        return;
+      }
+
+      // Get-or-Create should be in a Firebase Function
+      axios
+        .get("https://api.chatengine.io/users/me/", {
+          headers: {
+            "project-id": process.env.WE_CHAT_ID,
+            "user-name": user.email,
+            "user-secret": user.uid,
+          },
+        })
+
+        .then(() => setLoading(false))
+
+        .catch((e) => {
+          let formdata = new FormData();
+          formdata.append("email", user.email);
+          formdata.append("username", user.email);
+          formdata.append("secret", user.uid);
+
+          getFile(user.photoURL).then((avatar) => {
+            formdata.append("avatar", avatar, avatar.name);
+
+            axios
+              .post("https://api.chatengine.io/users/", formdata, {
+                headers: {
+                  "private-key": process.env.WE_CHAT_KEY,
+                },
+              })
+              .then(() => setLoading(false))
+              .catch((e) => console.log("e", e.response));
+          });
+        });
     }
-
-    axios
-      .get("https://api.chatengine.io/users/me", {
-        headers: {
-          "project-id": "e04f2bfd-e1c7-437c-845f-f75bf15702f2",
-          "user-name": user.email,
-          "user-secret": user.uid,
-        },
-      })
-      .then(() => {
-        setLoading(false);
-      })
-      .catch(() => {
-        let formdata = new FormData();
-        formdata.append("email", user.email);
-        formdata.append("username", user.email);
-        formdata.append("secret", user.uid);
-      });
   }, [user, history]);
+
+  if (!user || loading) return <div />;
 
   return (
     <div className="chats-page">
       <div className="nav-bar">
-        <div className="logo-tab">weChatr</div>
-        <div onClick={handlelogout} className="logout-tab">
+        <div className="logo-tab">Unichat</div>
+
+        <div onClick={handleLogout} className="logout-tab">
           Logout
         </div>
       </div>
+
       <ChatEngine
         height="calc(100vh - 66px)"
-        projectId="e04f2bfd-e1c7-437c-845f-f75bf15702f2"
-        userName="."
-        userSecret="."
+        projectID={process.env.WE_CHAT_ID}
+        userName={user.email}
+        userSecret={user.uid}
       />
     </div>
   );
-};
-
-export default Chats;
+}
